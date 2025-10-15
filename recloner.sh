@@ -87,6 +87,19 @@ for cmd in "${clones[@]}"; do
         fi
     fi
 
+    mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \))
+    if [ -n "$mk_files" ]; then
+        for mk in $mk_files; do
+            if [ "$DRY_RUN" -eq 1 ]; then
+                echo "Would replace 'lineage' with '$ROM_NAME' in $mk"
+            else
+                echo "Updating $mk..."
+                sed -i "s/lineage/$ROM_NAME/g" "$mk"
+                echo "Replaced all 'lineage' with '$ROM_NAME' in $mk."
+            fi
+        done
+    fi
+
     # 6️⃣ Replace all 'lineage' with ROM_NAME in ${ROM_NAME}_Spacewar.mk
     mk_files=$(find "$folder" -type f -name "*${ROM_NAME}_Spacewar.mk")
     if [ -n "$mk_files" ]; then
@@ -154,7 +167,7 @@ fi
 
 # 🔟 Run all vendor/*priv/keys/keys.sh scripts if they exist
 if [ -d "vendor" ]; then
-    key_scripts=$(find vendor -path "*/priv/keys/keys.sh" 2>/dev/null)
+    key_scripts=$(find vendor -type f -path "*priv/keys/keys.sh" 2>/dev/null)
 else
     key_scripts=""
     echo "⚠️  vendor directory not found, skipping keys.sh execution"
@@ -174,7 +187,7 @@ if [ -n "$key_scripts" ]; then
         fi
     done
 else
-    echo "No vendor/*priv/keys/keys.sh files found."
+    echo "No vendor/*-priv/keys/keys.sh files found."
 fi
 
 echo ""
