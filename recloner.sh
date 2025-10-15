@@ -130,6 +130,25 @@ else
     echo "Updated $pkg_file successfully."
 fi
 
+# 8️⃣.5 Fix vendor/lineage references in hardware/interfaces/compatibility_matrices/Android.bp
+android_bp_file="hardware/interfaces/compatibility_matrices/Android.bp"
+if [ -f "$android_bp_file" ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "Would replace 'vendor/lineage' with 'vendor/$ROM_NAME' in $android_bp_file"
+        grep -n "vendor/lineage" "$android_bp_file" 2>/dev/null || echo "No 'vendor/lineage' references found"
+    else
+        if grep -q "vendor/lineage" "$android_bp_file" 2>/dev/null; then
+            echo "Fixing vendor path references in $android_bp_file..."
+            sed -i "s|vendor/lineage|vendor/$ROM_NAME|g" "$android_bp_file"
+            echo "✅ Replaced 'vendor/lineage' with 'vendor/$ROM_NAME' in $android_bp_file"
+        else
+            echo "ℹ️  No 'vendor/lineage' references found in $android_bp_file"
+        fi
+    fi
+else
+    echo "⚠️  $android_bp_file not found, skipping vendor path fix"
+fi
+
 # 9️⃣ Update device_framework_matrix.xml in vendor/${ROM_NAME}/config/
 config_dir="vendor/${ROM_NAME}/config"
 matrix_file="device_framework_matrix.xml"
