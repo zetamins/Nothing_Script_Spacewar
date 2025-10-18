@@ -134,7 +134,7 @@ for cmd in "${clones[@]}"; do
             
             # Download and run KernelSU setup script
             echo "Downloading and running KernelSU v0.9.5 setup script..."
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+            curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
             
             cd - >/dev/null
             echo "✅ KernelSU setup completed."
