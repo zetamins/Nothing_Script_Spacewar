@@ -15,10 +15,10 @@ echo ""
 
 # 🧩 List of git clone commands
 clones=(
-"git clone -b bka https://github.com/Evolution-X-Devices/device_nothing_Spacewar.git device/nothing/Spacewar"
-"git clone -b bka https://github.com/Evolution-X-Devices/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-"git clone -b bka https://github.com/nyxalune/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
-"git clone -b bka https://github.com/Evolution-X-Devices/hardware_nothing.git hardware/nothing"
+"git clone -b derp16 https://github.com/DaViDev985/device_nothing_Spacewar.git device/nothing/Spacewar"
+"git clone -b derp16-ksun https://github.com/DaViDev985/kernel_nothing_sm7325.git kernel/nothing/sm7325"
+"git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git"
+"git clone -b derp16 https://github.com/DaViDev985/android_hardware_nothing.git hardware/nothing"
 )
 
 for cmd in "${clones[@]}"; do
@@ -71,20 +71,6 @@ for cmd in "${clones[@]}"; do
             echo "Renamed $f → $newname"
         ' \;
         echo "Renaming done in $folder."
-    fi
-
-    # 5️⃣ KernelSU setup (only for kernel repo)
-    if [ "$folder" == "kernel/nothing/sm7325" ]; then
-        if [ "$DRY_RUN" -eq 1 ]; then
-            echo "Would cd into $folder, remove KernelSU-Next, and run KernelSU setup script"
-        else
-            echo "Setting up KernelSU in $folder..."
-            cd "$folder" || { echo "Failed to cd into $folder"; continue; }
-            rm -rf KernelSU-Next
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
-            cd - >/dev/null
-            echo "KernelSU setup completed."
-        fi
     fi
 
     mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \))
