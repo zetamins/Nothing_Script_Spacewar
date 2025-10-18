@@ -17,7 +17,7 @@ echo ""
 clones=(
 "git clone -b derp16 https://github.com/DaViDev985/device_nothing_Spacewar.git device/nothing/Spacewar"
 "git clone -b derp16-ksun https://github.com/DaViDev985/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-"git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git"
+"git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
 "git clone -b derp16 https://github.com/DaViDev985/android_hardware_nothing.git hardware/nothing"
 )
 
