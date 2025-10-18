@@ -248,28 +248,29 @@ matrix_url="https://raw.githubusercontent.com/zetamins/Nothing_Script_Spacewar/r
 if [ -d "$config_dir" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "Would cd into $config_dir"
-        echo "Would remove $matrix_file if it exists"
-        echo "Would download $matrix_url"
+        if [ ! -f "$config_dir/$matrix_file" ]; then
+            echo "Would download $matrix_url"
+        else
+            echo "File $matrix_file already exists, would skip download"
+        fi
     else
-        echo "Updating device_framework_matrix.xml in $config_dir..."
         cd "$config_dir" || { echo "Failed to cd into $config_dir"; }
         
         if [ -f "$matrix_file" ]; then
-            echo "Removing existing $matrix_file..."
-            rm "$matrix_file"
-        fi
-        
-        echo "Downloading $matrix_file from GitHub..."
-        curl -LSs -o "$matrix_file" "$matrix_url"
-        
-        if [ -f "$matrix_file" ]; then
-            echo "✅ Successfully downloaded $matrix_file"
+            echo "✅ $matrix_file already exists, skipping download"
         else
-            echo "❌ Failed to download $matrix_file"
+            echo "Downloading $matrix_file from GitHub..."
+            curl -LSs -o "$matrix_file" "$matrix_url"
+            
+            if [ -f "$matrix_file" ]; then
+                echo "✅ Successfully downloaded $matrix_file"
+            else
+                echo "❌ Failed to download $matrix_file"
+            fi
         fi
         
         cd - >/dev/null
-        echo "device_framework_matrix.xml update completed."
+        echo "device_framework_matrix.xml check completed."
     fi
 else
     echo "⚠️  $config_dir directory not found, skipping device_framework_matrix.xml update"
