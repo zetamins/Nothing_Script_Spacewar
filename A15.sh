@@ -2,6 +2,7 @@
 # ==============================================================
 # 🚀 ROM Setup Script – Optimized Version
 # 🧩 Cherry-pick now happens BEFORE renaming & replacements
+# 🔄 Handles both lineage and aosp naming patterns
 # ==============================================================
 
 # 🧪 Dry run mode: set to 0 to execute, 1 to preview commands
@@ -132,6 +133,12 @@ cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/Linea
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
 # ==============================================================
 
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔄 Renaming files and replacing strings"
+echo "════════════════════════════════════════════════"
+echo ""
+
 for folder in device/nothing/Spacewar kernel/nothing/sm7325 vendor/nothing/Spacewar hardware/nothing; do
   if [ ! -d "$folder" ]; then
     echo "⚠️  $folder not found, skipping rename & replacements."
@@ -142,36 +149,47 @@ for folder in device/nothing/Spacewar kernel/nothing/sm7325 vendor/nothing/Space
   echo "Updating references in $folder"
   echo "──────────────────────────────────────────────"
 
-  # Replace inside files
+  # Replace both lineage_Spacewar and aosp_Spacewar patterns
+  for pattern in "lineage_Spacewar" "aosp_Spacewar"; do
+    if [ "$DRY_RUN" -eq 1 ]; then
+      echo "Would replace '$pattern' with '${ROM_NAME}_Spacewar' in $folder"
+    else
+      if grep -rl "$pattern" "$folder" 2>/dev/null | grep -q .; then
+        grep -rl "$pattern" "$folder" | xargs sed -i "s/$pattern/${ROM_NAME}_Spacewar/g" 2>/dev/null
+        echo "✅ Replaced '$pattern' with '${ROM_NAME}_Spacewar' in files."
+      else
+        echo "ℹ️  No '$pattern' references found."
+      fi
+    fi
+  done
+
+  # Rename files/folders containing lineage_Spacewar or aosp_Spacewar
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would replace 'lineage_Spacewar' with '${ROM_NAME}_Spacewar' in $folder"
+    echo "Would rename files/folders containing 'lineage_Spacewar' or 'aosp_Spacewar'"
   else
-    grep -rl "lineage_Spacewar" "$folder" | xargs sed -i "s/lineage_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
-    echo "Replaced 'lineage_Spacewar' with '${ROM_NAME}_Spacewar' in files."
+    for pattern in "lineage_Spacewar" "aosp_Spacewar"; do
+      find "$folder" -depth -name "*${pattern}*" 2>/dev/null -exec bash -c '
+        f="{}"
+        rom_name="'"$ROM_NAME"'"
+        pattern="'"$pattern"'"
+        newname="$(dirname "$f")/$(basename "$f" | sed "s/${pattern}/${rom_name}_Spacewar/g")"
+        if [ "$f" != "$newname" ]; then
+          mv "$f" "$newname" 2>/dev/null && echo "Renamed $f → $newname"
+        fi
+      ' \;
+    done
   fi
 
-  # Rename files/folders
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would rename files/folders containing 'lineage_Spacewar'"
-  else
-    find "$folder" -depth -name "*lineage_Spacewar*" -exec bash -c '
-      f="{}"
-      rom_name="'"$ROM_NAME"'"
-      newname="$(dirname "$f")/$(basename "$f" | sed "s/lineage_Spacewar/${rom_name}_Spacewar/g")"
-      mv "$f" "$newname"
-      echo "Renamed $f → $newname"
-    ' \;
-  fi
-
-  # Replace all 'lineage' → ROM_NAME in mk files
-  mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \))
+  # Replace 'lineage' or 'aosp' → ROM_NAME in mk files
+  mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" -o -name "*lineage*.mk" -o -name "*aosp*.mk" \) 2>/dev/null)
   if [ -n "$mk_files" ]; then
     for mk in $mk_files; do
       if [ "$DRY_RUN" -eq 1 ]; then
-        echo "Would replace 'lineage' with '$ROM_NAME' in $mk"
+        echo "Would replace 'lineage' and 'aosp' with '$ROM_NAME' in $mk"
       else
-        sed -i "s/lineage/$ROM_NAME/g" "$mk"
-        echo "Updated $mk"
+        # Replace both lineage and aosp with ROM_NAME, but preserve case sensitivity where needed
+        sed -i -e "s/\blineage\b/$ROM_NAME/g" -e "s/\baosp\b/$ROM_NAME/g" "$mk" 2>/dev/null
+        echo "✅ Updated $mk"
       fi
     done
   fi
@@ -180,6 +198,12 @@ done
 # ==============================================================
 # 4️⃣ KERNELSU SETUP
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔧 Setting up KernelSU"
+echo "════════════════════════════════════════════════"
+echo ""
 
 kernel_folder="kernel/nothing/sm7325"
 if [ -d "$kernel_folder" ]; then
@@ -190,13 +214,21 @@ if [ -d "$kernel_folder" ]; then
     rm -rf KernelSU-Next
     curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
     cd - >/dev/null
-    echo "KernelSU setup completed."
+    echo "✅ KernelSU setup completed."
   fi
+else
+  echo "⚠️  $kernel_folder not found, skipping KernelSU setup."
 fi
 
 # ==============================================================
 # 5️⃣ FIX PACKAGE ALLOWED LIST
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "📦 Fixing package allowed list"
+echo "════════════════════════════════════════════════"
+echo ""
 
 pkg_file="build/soong/scripts/check_boot_jars/package_allowed_list.txt"
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -206,23 +238,37 @@ else
   touch "$pkg_file"
   grep -qxF "com\\.nothing" "$pkg_file" || echo "com\\.nothing" >> "$pkg_file"
   grep -qxF "com\\.nothing\\..*" "$pkg_file" || echo "com\\.nothing\\..*" >> "$pkg_file"
-  echo "Updated $pkg_file successfully."
+  echo "✅ Updated $pkg_file successfully."
 fi
 
 # ==============================================================
 # 6️⃣ FIX ANDROID.BP REFERENCES
 # ==============================================================
 
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔧 Fixing Android.bp vendor references"
+echo "════════════════════════════════════════════════"
+echo ""
+
 android_bp_file="hardware/interfaces/compatibility_matrices/Android.bp"
 if [ -f "$android_bp_file" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would replace 'vendor/lineage' with 'vendor/$ROM_NAME' in $android_bp_file"
+    echo "Would replace 'vendor/lineage' and 'vendor/aosp' with 'vendor/$ROM_NAME' in $android_bp_file"
   else
+    modified=false
     if grep -q "vendor/lineage" "$android_bp_file"; then
       sed -i "s|vendor/lineage|vendor/$ROM_NAME|g" "$android_bp_file"
-      echo "✅ Fixed vendor paths in $android_bp_file"
-    else
-      echo "ℹ️  No vendor/lineage references found."
+      echo "✅ Fixed vendor/lineage paths in $android_bp_file"
+      modified=true
+    fi
+    if grep -q "vendor/aosp" "$android_bp_file"; then
+      sed -i "s|vendor/aosp|vendor/$ROM_NAME|g" "$android_bp_file"
+      echo "✅ Fixed vendor/aosp paths in $android_bp_file"
+      modified=true
+    fi
+    if [ "$modified" = false ]; then
+      echo "ℹ️  No vendor/lineage or vendor/aosp references found."
     fi
   fi
 else
@@ -232,6 +278,12 @@ fi
 # ==============================================================
 # 7️⃣ UPDATE DEVICE FRAMEWORK MATRIX
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "📋 Updating device framework matrix"
+echo "════════════════════════════════════════════════"
+echo ""
 
 config_dir="vendor/${ROM_NAME}/config"
 matrix_file="device_framework_matrix.xml"
@@ -262,4 +314,10 @@ echo "════════════════════════�
 echo "✅ Script completed successfully"
 echo "📱 ROM Name: $ROM_NAME"
 echo "🧪 Dry Run: $DRY_RUN"
+echo "════════════════════════════════════════════════"
+echo ""
+echo "Next steps:"
+echo "1. source build/envsetup.sh"
+echo "2. lunch ${ROM_NAME}_Spacewar-userdebug"
+echo "3. m bacon (or your ROM's build command)"
 echo "════════════════════════════════════════════════"
