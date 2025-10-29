@@ -26,7 +26,6 @@ clones=(
   "git clone -b bka https://github.com/Evolution-X-Devices/kernel_nothing_sm7325.git kernel/nothing/sm7325"
   "git clone -b bka https://github.com/nyxalune/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
   "git clone -b bka https://github.com/Evolution-X-Devices/hardware_nothing.git hardware/nothing"
-  "git clone https://github.com/adityayyy/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
 )
 
 for cmd in "${clones[@]}"; do
@@ -129,11 +128,7 @@ cherry_pick_commit() {
 
 # Perform cherry-picks BEFORE renaming
 cherry_pick_commit "vendor/nothing/Spacewar" "muppets" "https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar.git" "b69b9f09c77bb53f43666e6cadde57ab601c15a4"
-cherry_pick_commit "vendor/nothing/Spacewar" "abhixv" "https://github.com/abhixv/android_vendor_nothing_Spacewar.git" "3ef8b9b0fc152a959e0be5aa4b8cb3c6a3fbab1f"
-cherry_pick_commit "vendor/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/vendor_nothing_Spacewar.git" "11d4dee052cf93792dc388113d2337df279041d6"
 cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/LineageOS/android_device_nothing_Spacewar.git" "aae038e48a7cfe60805d37663555258c50e38f55"
-cherry_pick_commit "device/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/device_nothing_Spacewar.git" "b2379dd63b16d57d064c755f4f3566ceb5ebc3f3"
-cherry_pick_commit "device/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/device_nothing_Spacewar.git" "e2f2a100ed0536b6f62190ac12026477758c2d5e"
 
 # ==============================================================
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
