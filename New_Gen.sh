@@ -134,50 +134,50 @@ cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/Linea
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
 # ==============================================================
 
-for folder in device/nothing/Spacewar kernel/nothing/sm7325 vendor/nothing/Spacewar hardware/nothing; do
-  if [ ! -d "$folder" ]; then
-    echo "⚠️  $folder not found, skipping rename & replacements."
-    continue
-  fi
+# Replace inside files
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "Would replace 'lineage_Spacewar' with '${ROM_NAME}_Spacewar' in $folder"
+else
+  grep -rl "lineage_Spacewar" "$folder" | xargs sed -i "s/lineage_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
+  grep -rl "aosp_Spacewar" "$folder" | xargs sed -i "s/aosp_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
+  grep -rl "mica_Spacewar" "$folder" | xargs sed -i "s/mica_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
+  grep -rl "clover_Spacewar" "$folder" | xargs sed -i "s/clover_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
+  echo "Replaced ROM prefixes with '${ROM_NAME}_Spacewar' in files."
+fi
 
-  echo "──────────────────────────────────────────────"
-  echo "Updating references in $folder"
-  echo "──────────────────────────────────────────────"
-
-  # Replace inside files
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would replace 'lineage_Spacewar' with '${ROM_NAME}_Spacewar' in $folder"
-  else
-    grep -rl "lineage_Spacewar" "$folder" | xargs sed -i "s/lineage_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
-    echo "Replaced 'lineage_Spacewar' with '${ROM_NAME}_Spacewar' in files."
-  fi
-
-  # Rename files/folders
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would rename files/folders containing 'lineage_Spacewar'"
-  else
-    find "$folder" -depth -name "*lineage_Spacewar*" -exec bash -c '
+# Rename files/folders
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "Would rename files/folders containing ROM prefixes"
+else
+  for prefix in lineage aosp mica clover; do
+    find "$folder" -depth -name "*${prefix}_Spacewar*" -exec bash -c '
       f="{}"
       rom_name="'"$ROM_NAME"'"
-      newname="$(dirname "$f")/$(basename "$f" | sed "s/lineage_Spacewar/${rom_name}_Spacewar/g")"
-      mv "$f" "$newname"
-      echo "Renamed $f → $newname"
-    ' \;
-  fi
-
-  # Replace all 'lineage' → ROM_NAME in mk files
-  mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \))
-  if [ -n "$mk_files" ]; then
-    for mk in $mk_files; do
-      if [ "$DRY_RUN" -eq 1 ]; then
-        echo "Would replace 'lineage' with '$ROM_NAME' in $mk"
-      else
-        sed -i "s/lineage/$ROM_NAME/g" "$mk"
-        echo "Updated $mk"
+      prefix="'"$prefix"'"
+      newname="$(dirname "$f")/$(basename "$f" | sed "s/${prefix}_Spacewar/${rom_name}_Spacewar/g")"
+      if [ "$f" != "$newname" ]; then
+        mv "$f" "$newname"
+        echo "Renamed $f → $newname"
       fi
-    done
-  fi
-done
+    ' \;
+  done
+fi
+
+# Replace all ROM prefixes → ROM_NAME in mk files
+mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \))
+if [ -n "$mk_files" ]; then
+  for mk in $mk_files; do
+    if [ "$DRY_RUN" -eq 1 ]; then
+      echo "Would replace ROM prefixes with '$ROM_NAME' in $mk"
+    else
+      sed -i -e "s/\blineage\b/$ROM_NAME/g" \
+             -e "s/\baosp\b/$ROM_NAME/g" \
+             -e "s/\mica\b/$ROM_NAME/g" \
+             -e "s/\bclover\b/$ROM_NAME/g" "$mk"
+      echo "Updated $mk"
+    fi
+  done
+fi
 
 # ==============================================================
 # 4️⃣ KERNELSU SETUP
