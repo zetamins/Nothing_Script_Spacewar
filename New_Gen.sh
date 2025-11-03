@@ -134,54 +134,85 @@ cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/Linea
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
 # ==============================================================
 
-# Replace inside files
-if [ "$DRY_RUN" -eq 1 ]; then
-  echo "Would replace 'lineage_Spacewar' with '${ROM_NAME}_Spacewar' in $folder"
-else
-  grep -rl "lineage_Spacewar" "$folder" | xargs sed -i "s/lineage_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
-  grep -rl "aosp_Spacewar" "$folder" | xargs sed -i "s/aosp_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
-  grep -rl "mica_Spacewar" "$folder" | xargs sed -i "s/mica_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
-  grep -rl "clover_Spacewar" "$folder" | xargs sed -i "s/clover_Spacewar/${ROM_NAME}_Spacewar/g" 2>/dev/null
-  echo "Replaced ROM prefixes with '${ROM_NAME}_Spacewar' in files."
-fi
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔄 Renaming files and replacing strings"
+echo "════════════════════════════════════════════════"
+echo ""
 
-# Rename files/folders
-if [ "$DRY_RUN" -eq 1 ]; then
-  echo "Would rename files/folders containing ROM prefixes"
-else
-  for prefix in lineage aosp mica clover; do
-    find "$folder" -depth -name "*${prefix}_Spacewar*" -exec bash -c '
-      f="{}"
-      rom_name="'"$ROM_NAME"'"
-      prefix="'"$prefix"'"
-      newname="$(dirname "$f")/$(basename "$f" | sed "s/${prefix}_Spacewar/${rom_name}_Spacewar/g")"
-      if [ "$f" != "$newname" ]; then
-        mv "$f" "$newname"
-        echo "Renamed $f → $newname"
+# Define directories to process
+directories=(
+  "device/nothing/Spacewar"
+  "kernel/nothing/sm7325"
+  "vendor/nothing/Spacewar"
+  "hardware/nothing"
+)
+
+for folder in "${directories[@]}"; do
+  if [ ! -d "$folder" ]; then
+    echo "⚠️  Directory $folder not found, skipping"
+    continue
+  fi
+
+  echo "──────────────────────────────────────────────"
+  echo "Processing directory: $folder"
+  echo "──────────────────────────────────────────────"
+
+  # Replace inside files
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Would replace ROM prefixes with '${ROM_NAME}_Spacewar' in $folder"
+  else
+    grep -rl "lineage_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/lineage_Spacewar/${ROM_NAME}_Spacewar/g"
+    grep -rl "aosp_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/aosp_Spacewar/${ROM_NAME}_Spacewar/g"
+    grep -rl "mica_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/mica_Spacewar/${ROM_NAME}_Spacewar/g"
+    grep -rl "clover_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/clover_Spacewar/${ROM_NAME}_Spacewar/g"
+    echo "✅ Replaced ROM prefixes with '${ROM_NAME}_Spacewar' in files."
+  fi
+
+  # Rename files/folders
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Would rename files/folders containing ROM prefixes in $folder"
+  else
+    for prefix in lineage aosp mica clover; do
+      find "$folder" -depth -name "*${prefix}_Spacewar*" 2>/dev/null -exec bash -c '
+        f="{}"
+        rom_name="'"$ROM_NAME"'"
+        prefix="'"$prefix"'"
+        newname="$(dirname "$f")/$(basename "$f" | sed "s/${prefix}_Spacewar/${rom_name}_Spacewar/g")"
+        if [ "$f" != "$newname" ]; then
+          mv "$f" "$newname"
+          echo "Renamed: $(basename "$f") → $(basename "$newname")"
+        fi
+      ' \;
+    done
+  fi
+
+  # Replace all ROM prefixes → ROM_NAME in mk files
+  mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \) 2>/dev/null)
+  if [ -n "$mk_files" ]; then
+    for mk in $mk_files; do
+      if [ "$DRY_RUN" -eq 1 ]; then
+        echo "Would replace ROM prefixes with '$ROM_NAME' in $mk"
+      else
+        sed -i -e "s/\blineage\b/$ROM_NAME/g" \
+               -e "s/\baosp\b/$ROM_NAME/g" \
+               -e "s/\bmica\b/$ROM_NAME/g" \
+               -e "s/\bclover\b/$ROM_NAME/g" "$mk"
+        echo "✅ Updated $(basename $mk)"
       fi
-    ' \;
-  done
-fi
-
-# Replace all ROM prefixes → ROM_NAME in mk files
-mk_files=$(find "$folder" -type f \( -name "*${ROM_NAME}_Spacewar.mk" -o -name "BoardConfig.mk" \))
-if [ -n "$mk_files" ]; then
-  for mk in $mk_files; do
-    if [ "$DRY_RUN" -eq 1 ]; then
-      echo "Would replace ROM prefixes with '$ROM_NAME' in $mk"
-    else
-      sed -i -e "s/\blineage\b/$ROM_NAME/g" \
-             -e "s/\baosp\b/$ROM_NAME/g" \
-             -e "s/\mica\b/$ROM_NAME/g" \
-             -e "s/\bclover\b/$ROM_NAME/g" "$mk"
-      echo "Updated $mk"
-    fi
-  done
-fi
+    done
+  fi
+done
 
 # ==============================================================
 # 4️⃣ KERNELSU SETUP
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔧 Setting up KernelSU"
+echo "════════════════════════════════════════════════"
+echo ""
 
 kernel_folder="kernel/nothing/sm7325"
 if [ -d "$kernel_folder" ]; then
@@ -192,13 +223,21 @@ if [ -d "$kernel_folder" ]; then
     rm -rf KernelSU-Next
     curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
     cd - >/dev/null
-    echo "KernelSU setup completed."
+    echo "✅ KernelSU setup completed."
   fi
+else
+  echo "⚠️  $kernel_folder not found, skipping KernelSU setup"
 fi
 
 # ==============================================================
 # 5️⃣ FIX PACKAGE ALLOWED LIST
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "📦 Fixing package allowed list"
+echo "════════════════════════════════════════════════"
+echo ""
 
 pkg_file="build/soong/scripts/check_boot_jars/package_allowed_list.txt"
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -208,12 +247,18 @@ else
   touch "$pkg_file"
   grep -qxF "com\\.nothing" "$pkg_file" || echo "com\\.nothing" >> "$pkg_file"
   grep -qxF "com\\.nothing\\..*" "$pkg_file" || echo "com\\.nothing\\..*" >> "$pkg_file"
-  echo "Updated $pkg_file successfully."
+  echo "✅ Updated $pkg_file successfully."
 fi
 
 # ==============================================================
 # 6️⃣ FIX ANDROID.BP REFERENCES
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔧 Fixing Android.bp references"
+echo "════════════════════════════════════════════════"
+echo ""
 
 android_bp_file="hardware/interfaces/compatibility_matrices/Android.bp"
 if [ -f "$android_bp_file" ]; then
@@ -234,6 +279,12 @@ fi
 # ==============================================================
 # 7️⃣ UPDATE DEVICE FRAMEWORK MATRIX
 # ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "📋 Updating device framework matrix"
+echo "════════════════════════════════════════════════"
+echo ""
 
 config_dir="vendor/${ROM_NAME}/config"
 matrix_file="device_framework_matrix.xml"
