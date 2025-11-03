@@ -44,26 +44,16 @@ echo ""
 clones=(
   "git clone -b derp16-ossaudio https://github.com/DaViDev985/device_nothing_Spacewar.git device/nothing/Spacewar"
   "git clone -b derp16-ksun https://github.com/DaViDev985/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-  "git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git vendor/nothing/Spacewar|SKIP_LFS"
+  "git clone -b bka https://github.com/nyxalune/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
   "git clone -b derp16 https://github.com/DaViDev985/android_hardware_nothing.git hardware/nothing"
   "git clone -b derp16 https://github.com/DaViDev985/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
 )
 
 for cmd in "${clones[@]}"; do
-  # Check if this clone should skip LFS
-  skip_lfs=0
-  if [[ "$cmd" == *"|SKIP_LFS"* ]]; then
-    skip_lfs=1
-    cmd="${cmd%|SKIP_LFS}"
-  fi
-  
   folder=$(echo "$cmd" | awk '{print $NF}')
 
   echo "──────────────────────────────────────────────"
   echo "Processing repository: $folder"
-  if [ $skip_lfs -eq 1 ]; then
-    echo "Mode: Skipping LFS files (dsp.img)"
-  fi
   echo "──────────────────────────────────────────────"
 
   # Delete old folder
@@ -80,25 +70,12 @@ for cmd in "${clones[@]}"; do
   # Clone repo
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Would run: $cmd"
-    if [ $skip_lfs -eq 1 ]; then
-      echo "Would skip LFS checkout"
-    fi
   else
-    if [ $skip_lfs -eq 1 ]; then
-      echo "Cloning without LFS checkout: $cmd"
-      # Set GIT_LFS_SKIP_SMUDGE to skip LFS file downloads
-      if GIT_LFS_SKIP_SMUDGE=1 $cmd; then
-        log_success "Cloned $folder successfully (LFS files skipped)"
-      else
-        log_error "Failed to clone $folder"
-      fi
+    echo "Cloning: $cmd"
+    if $cmd; then
+      log_success "Cloned $folder successfully"
     else
-      echo "Cloning: $cmd"
-      if $cmd; then
-        log_success "Cloned $folder successfully"
-      else
-        log_error "Failed to clone $folder"
-      fi
+      log_error "Failed to clone $folder"
     fi
   fi
 done
@@ -196,65 +173,6 @@ cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/Linea
 
 # New cherry-picks
 cherry_pick_commit "vendor/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/vendor_nothing_Spacewar.git" "af074591e9a880b9869b9aba49d2af658cb2dcf8"
-cherry_pick_commit "vendor/nothing/Spacewar" "abhixv" "https://github.com/abhixv/android_vendor_nothing_Spacewar.git" "3ef8b9b0fc152a959e0be5aa4b8cb3c6a3fbab1f"
-
-# ==============================================================
-# 2.5️⃣ RADIO FOLDER SETUP
-# ==============================================================
-
-echo ""
-echo "════════════════════════════════════════════════"
-echo "📡 Setting up radio folder"
-echo "════════════════════════════════════════════════"
-echo ""
-
-VENDOR_DIR="vendor/nothing/Spacewar"
-RADIO_DIR="$VENDOR_DIR/radio"
-TEMP_DIR="/tmp/muppets_radio_temp"
-
-if [ -d "$VENDOR_DIR" ]; then
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would delete $RADIO_DIR"
-    echo "Would clone TheMuppets radio folder"
-    echo "Would copy radio folder to $VENDOR_DIR"
-  else
-    # Delete existing radio folder
-    if [ -d "$RADIO_DIR" ]; then
-      echo "Deleting existing radio folder..."
-      if rm -rf "$RADIO_DIR"; then
-        log_success "Deleted existing radio folder"
-      else
-        log_error "Failed to delete radio folder"
-      fi
-    fi
-
-    # Clone TheMuppets repo to temp location
-    echo "Cloning TheMuppets repository (skipping LFS for dsp.img)..."
-    rm -rf "$TEMP_DIR"
-    if GIT_LFS_SKIP_SMUDGE=1 git clone -b lineage-23.0 --depth=1 https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar "$TEMP_DIR"; then
-      log_success "Cloned TheMuppets repository (LFS files skipped)"
-      
-      # Copy radio folder
-      if [ -d "$TEMP_DIR/radio" ]; then
-        echo "Copying radio folder..."
-        if cp -r "$TEMP_DIR/radio" "$VENDOR_DIR/"; then
-          log_success "Copied radio folder to $VENDOR_DIR"
-        else
-          log_error "Failed to copy radio folder"
-        fi
-      else
-        log_warning "Radio folder not found in TheMuppets repository"
-      fi
-      
-      # Cleanup temp directory
-      rm -rf "$TEMP_DIR"
-    else
-      log_error "Failed to clone TheMuppets repository"
-    fi
-  fi
-else
-  log_warning "$VENDOR_DIR not found, skipping radio folder setup"
-fi
 
 # ==============================================================
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
