@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================
-# 🚀 ROM Setup Script – Optimized Version
+# 🚀 ROM Setup Script – Enhanced Version
 # 🧩 Cherry-pick now happens BEFORE renaming & replacements
 # ==============================================================
 
@@ -9,6 +9,26 @@ DRY_RUN=0
 
 # 🎯 ROM name parameter - change this to your ROM name (e.g., "voltage", "lineage", "evolution")
 ROM_NAME="${1:-euclid}"
+
+# 📊 Error tracking
+declare -a ERRORS=()
+declare -a WARNINGS=()
+declare -a SUCCESS=()
+
+log_error() {
+  ERRORS+=("$1")
+  echo "❌ ERROR: $1"
+}
+
+log_warning() {
+  WARNINGS+=("$1")
+  echo "⚠️  WARNING: $1"
+}
+
+log_success() {
+  SUCCESS+=("$1")
+  echo "✅ $1"
+}
 
 echo "════════════════════════════════════════════════"
 echo "🚀 ROM Setup Script"
@@ -24,16 +44,26 @@ echo ""
 clones=(
   "git clone -b derp16-ossaudio https://github.com/DaViDev985/device_nothing_Spacewar.git device/nothing/Spacewar"
   "git clone -b derp16-ksun https://github.com/DaViDev985/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-  "git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
+  "git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git vendor/nothing/Spacewar|SKIP_LFS"
   "git clone -b derp16 https://github.com/DaViDev985/android_hardware_nothing.git hardware/nothing"
   "git clone -b derp16 https://github.com/DaViDev985/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
 )
 
 for cmd in "${clones[@]}"; do
+  # Check if this clone should skip LFS
+  skip_lfs=0
+  if [[ "$cmd" == *"|SKIP_LFS"* ]]; then
+    skip_lfs=1
+    cmd="${cmd%|SKIP_LFS}"
+  fi
+  
   folder=$(echo "$cmd" | awk '{print $NF}')
 
   echo "──────────────────────────────────────────────"
   echo "Processing repository: $folder"
+  if [ $skip_lfs -eq 1 ]; then
+    echo "Mode: Skipping LFS files (dsp.img)"
+  fi
   echo "──────────────────────────────────────────────"
 
   # Delete old folder
@@ -43,17 +73,33 @@ for cmd in "${clones[@]}"; do
     else
       echo "Deleting folder $folder..."
       rm -rf "$folder"
-      echo "Deleted $folder."
+      log_success "Deleted $folder"
     fi
   fi
 
   # Clone repo
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Would run: $cmd"
+    if [ $skip_lfs -eq 1 ]; then
+      echo "Would skip LFS checkout"
+    fi
   else
-    echo "Cloning: $cmd"
-    $cmd
-    echo "Cloned $folder successfully."
+    if [ $skip_lfs -eq 1 ]; then
+      echo "Cloning without LFS checkout: $cmd"
+      # Set GIT_LFS_SKIP_SMUDGE to skip LFS file downloads
+      if GIT_LFS_SKIP_SMUDGE=1 $cmd; then
+        log_success "Cloned $folder successfully (LFS files skipped)"
+      else
+        log_error "Failed to clone $folder"
+      fi
+    else
+      echo "Cloning: $cmd"
+      if $cmd; then
+        log_success "Cloned $folder successfully"
+      else
+        log_error "Failed to clone $folder"
+      fi
+    fi
   fi
 done
 
@@ -75,14 +121,15 @@ cherry_pick_commit() {
 
   echo "──────────────────────────────────────────────"
   echo "Cherry-picking in $LOCAL_DIR"
+  echo "Commit: $COMMIT_SHA"
   echo "──────────────────────────────────────────────"
 
   if [ ! -d "$LOCAL_DIR" ]; then
-    echo "⚠️  Directory $LOCAL_DIR not found, skipping cherry-pick"
-    return
+    log_warning "Directory $LOCAL_DIR not found, skipping cherry-pick"
+    return 1
   fi
 
-  cd "$LOCAL_DIR" || { echo "Failed to enter $LOCAL_DIR"; return; }
+  cd "$LOCAL_DIR" || { log_error "Failed to enter $LOCAL_DIR"; return 1; }
 
   # Set git to use true (no-op) as editor to avoid opening nano/vim
   export GIT_EDITOR=true
@@ -94,42 +141,120 @@ cherry_pick_commit() {
   else
     if ! git remote | grep -q "^${REMOTE_NAME}$"; then
       echo "Adding remote $REMOTE_NAME..."
-      git remote add "$REMOTE_NAME" "$REMOTE_REPO"
+      if git remote add "$REMOTE_NAME" "$REMOTE_REPO"; then
+        log_success "Added remote $REMOTE_NAME"
+      else
+        log_error "Failed to add remote $REMOTE_NAME in $LOCAL_DIR"
+        cd - >/dev/null
+        return 1
+      fi
     else
       echo "Remote $REMOTE_NAME already exists"
     fi
 
     echo "Fetching from $REMOTE_NAME..."
-    git fetch "$REMOTE_NAME" || { echo "Failed to fetch from $REMOTE_NAME"; cd - >/dev/null; return; }
+    if ! git fetch "$REMOTE_NAME"; then
+      log_error "Failed to fetch from $REMOTE_NAME in $LOCAL_DIR"
+      cd - >/dev/null
+      return 1
+    fi
 
     echo "Cherry-picking commit $COMMIT_SHA..."
     if git cherry-pick --allow-empty "$COMMIT_SHA"; then
-      echo "✅ Cherry-pick successful"
+      log_success "Cherry-pick successful: $COMMIT_SHA in $LOCAL_DIR"
     else
       CONFLICT_FILES=$(git diff --name-only --diff-filter=U)
       if [ -n "$CONFLICT_FILES" ]; then
-        echo "⚠️  Found conflicts, resolving automatically..."
+        log_warning "Found conflicts in $LOCAL_DIR, resolving automatically..."
         for file in $CONFLICT_FILES; do
           awk '/^<<<<<<< HEAD$/{skip=1; next} /^=======$/{skip=0; next} /^>>>>>>>/{next} !skip{print}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
           git add "$file"
         done
         if git cherry-pick --continue --allow-empty; then
-          echo "✅ Cherry-pick completed after conflict resolution"
+          log_success "Cherry-pick completed after conflict resolution: $COMMIT_SHA in $LOCAL_DIR"
         else
-          echo "❌ Cherry-pick failed, aborting..."
+          log_error "Cherry-pick failed for $COMMIT_SHA in $LOCAL_DIR (conflict resolution failed)"
           git cherry-pick --abort
+          cd - >/dev/null
+          return 1
         fi
       else
-        echo "❌ Cherry-pick failed"
+        log_error "Cherry-pick failed for $COMMIT_SHA in $LOCAL_DIR (no conflicts detected)"
+        git cherry-pick --abort
+        cd - >/dev/null
+        return 1
       fi
     fi
   fi
   cd - >/dev/null
+  return 0
 }
 
 # Perform cherry-picks BEFORE renaming
 cherry_pick_commit "vendor/nothing/Spacewar" "muppets" "https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar.git" "b69b9f09c77bb53f43666e6cadde57ab601c15a4"
 cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/LineageOS/android_device_nothing_Spacewar.git" "aae038e48a7cfe60805d37663555258c50e38f55"
+
+# New cherry-picks
+cherry_pick_commit "vendor/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/vendor_nothing_Spacewar.git" "af074591e9a880b9869b9aba49d2af658cb2dcf8"
+cherry_pick_commit "vendor/nothing/Spacewar" "abhixv" "https://github.com/abhixv/android_vendor_nothing_Spacewar.git" "3ef8b9b0fc152a959e0be5aa4b8cb3c6a3fbab1f"
+
+# ==============================================================
+# 2.5️⃣ RADIO FOLDER SETUP
+# ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "📡 Setting up radio folder"
+echo "════════════════════════════════════════════════"
+echo ""
+
+VENDOR_DIR="vendor/nothing/Spacewar"
+RADIO_DIR="$VENDOR_DIR/radio"
+TEMP_DIR="/tmp/muppets_radio_temp"
+
+if [ -d "$VENDOR_DIR" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Would delete $RADIO_DIR"
+    echo "Would clone TheMuppets radio folder"
+    echo "Would copy radio folder to $VENDOR_DIR"
+  else
+    # Delete existing radio folder
+    if [ -d "$RADIO_DIR" ]; then
+      echo "Deleting existing radio folder..."
+      if rm -rf "$RADIO_DIR"; then
+        log_success "Deleted existing radio folder"
+      else
+        log_error "Failed to delete radio folder"
+      fi
+    fi
+
+    # Clone TheMuppets repo to temp location
+    echo "Cloning TheMuppets repository (skipping LFS for dsp.img)..."
+    rm -rf "$TEMP_DIR"
+    if GIT_LFS_SKIP_SMUDGE=1 git clone -b lineage-23.0 --depth=1 https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar "$TEMP_DIR"; then
+      log_success "Cloned TheMuppets repository (LFS files skipped)"
+      
+      # Copy radio folder
+      if [ -d "$TEMP_DIR/radio" ]; then
+        echo "Copying radio folder..."
+        if cp -r "$TEMP_DIR/radio" "$VENDOR_DIR/"; then
+          log_success "Copied radio folder to $VENDOR_DIR"
+        else
+          log_error "Failed to copy radio folder"
+        fi
+      else
+        log_warning "Radio folder not found in TheMuppets repository"
+      fi
+      
+      # Cleanup temp directory
+      rm -rf "$TEMP_DIR"
+    else
+      log_error "Failed to clone TheMuppets repository"
+    fi
+  fi
+else
+  log_warning "$VENDOR_DIR not found, skipping radio folder setup"
+fi
 
 # ==============================================================
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
@@ -151,7 +276,7 @@ directories=(
 
 for folder in "${directories[@]}"; do
   if [ ! -d "$folder" ]; then
-    echo "⚠️  Directory $folder not found, skipping"
+    log_warning "Directory $folder not found, skipping"
     continue
   fi
 
@@ -167,7 +292,7 @@ for folder in "${directories[@]}"; do
     grep -rl "aosp_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/aosp_Spacewar/${ROM_NAME}_Spacewar/g"
     grep -rl "mica_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/mica_Spacewar/${ROM_NAME}_Spacewar/g"
     grep -rl "clover_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/clover_Spacewar/${ROM_NAME}_Spacewar/g"
-    echo "✅ Replaced ROM prefixes with '${ROM_NAME}_Spacewar' in files."
+    log_success "Replaced ROM prefixes with '${ROM_NAME}_Spacewar' in $folder"
   fi
 
   # Rename files/folders
@@ -199,7 +324,7 @@ for folder in "${directories[@]}"; do
                -e "s/\baosp\b/$ROM_NAME/g" \
                -e "s/\bmica\b/$ROM_NAME/g" \
                -e "s/\bclover\b/$ROM_NAME/g" "$mk"
-        echo "✅ Updated $(basename $mk)"
+        log_success "Updated $(basename $mk)"
       fi
     done
   fi
@@ -222,12 +347,15 @@ if [ -d "$kernel_folder" ]; then
   else
     cd "$kernel_folder" || exit
     rm -rf KernelSU-Next
-    curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+    if curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5; then
+      log_success "KernelSU setup completed"
+    else
+      log_error "KernelSU setup failed"
+    fi
     cd - >/dev/null
-    echo "✅ KernelSU setup completed."
   fi
 else
-  echo "⚠️  $kernel_folder not found, skipping KernelSU setup"
+  log_warning "$kernel_folder not found, skipping KernelSU setup"
 fi
 
 # ==============================================================
@@ -248,7 +376,7 @@ else
   touch "$pkg_file"
   grep -qxF "com\\.nothing" "$pkg_file" || echo "com\\.nothing" >> "$pkg_file"
   grep -qxF "com\\.nothing\\..*" "$pkg_file" || echo "com\\.nothing\\..*" >> "$pkg_file"
-  echo "✅ Updated $pkg_file successfully."
+  log_success "Updated $pkg_file"
 fi
 
 # ==============================================================
@@ -268,13 +396,13 @@ if [ -f "$android_bp_file" ]; then
   else
     if grep -q "vendor/lineage" "$android_bp_file"; then
       sed -i "s|vendor/lineage|vendor/$ROM_NAME|g" "$android_bp_file"
-      echo "✅ Fixed vendor paths in $android_bp_file"
+      log_success "Fixed vendor paths in $android_bp_file"
     else
       echo "ℹ️  No vendor/lineage references found."
     fi
   fi
 else
-  echo "⚠️  $android_bp_file not found, skipping fix."
+  log_warning "$android_bp_file not found, skipping fix"
 fi
 
 # ==============================================================
@@ -297,23 +425,61 @@ if [ -d "$config_dir" ]; then
   else
     cd "$config_dir" || exit
     if [ ! -f "$matrix_file" ]; then
-      curl -LSs -o "$matrix_file" "$matrix_url" && echo "✅ Downloaded $matrix_file" || echo "❌ Failed to download $matrix_file"
+      if curl -LSs -o "$matrix_file" "$matrix_url"; then
+        log_success "Downloaded $matrix_file"
+      else
+        log_error "Failed to download $matrix_file"
+      fi
     else
-      echo "✅ $matrix_file already exists, skipping download"
+      log_success "$matrix_file already exists, skipping download"
     fi
     cd - >/dev/null
   fi
 else
-  echo "⚠️  $config_dir not found, skipping matrix update."
+  log_warning "$config_dir not found, skipping matrix update"
 fi
 
 # ==============================================================
-# ✅ COMPLETION
+# 📊 SUMMARY REPORT
 # ==============================================================
 
 echo ""
 echo "════════════════════════════════════════════════"
-echo "✅ Script completed successfully"
-echo "📱 ROM Name: $ROM_NAME"
-echo "🧪 Dry Run: $DRY_RUN"
+echo "📊 EXECUTION SUMMARY"
 echo "════════════════════════════════════════════════"
+echo ""
+
+if [ ${#SUCCESS[@]} -gt 0 ]; then
+  echo "✅ SUCCESSFUL OPERATIONS (${#SUCCESS[@]}):"
+  for item in "${SUCCESS[@]}"; do
+    echo "   • $item"
+  done
+  echo ""
+fi
+
+if [ ${#WARNINGS[@]} -gt 0 ]; then
+  echo "⚠️  WARNINGS (${#WARNINGS[@]}):"
+  for item in "${WARNINGS[@]}"; do
+    echo "   • $item"
+  done
+  echo ""
+fi
+
+if [ ${#ERRORS[@]} -gt 0 ]; then
+  echo "❌ ERRORS (${#ERRORS[@]}):"
+  for item in "${ERRORS[@]}"; do
+    echo "   • $item"
+  done
+  echo ""
+  echo "════════════════════════════════════════════════"
+  echo "⚠️  Script completed with errors!"
+  echo "════════════════════════════════════════════════"
+  exit 1
+else
+  echo "════════════════════════════════════════════════"
+  echo "✅ Script completed successfully!"
+  echo "📱 ROM Name: $ROM_NAME"
+  echo "🧪 Dry Run: $DRY_RUN"
+  echo "════════════════════════════════════════════════"
+  exit 0
+fi
