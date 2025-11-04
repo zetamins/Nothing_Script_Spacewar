@@ -9,7 +9,7 @@
 DRY_RUN=0
 
 # 🎯 ROM name parameter - change this to your ROM name (e.g., "voltage", "lineage", "evolution")
-ROM_NAME="${1:-euclid}"
+ROM_NAME="${1:-lineage}"
 
 # 📊 Error tracking
 declare -a ERRORS=()
