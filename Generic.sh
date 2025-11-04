@@ -249,6 +249,48 @@ for folder in "${directories[@]}"; do
 done
 
 # ==============================================================
+# 3.5️⃣ FIX VENDOR FILES
+# ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔧 Fixing vendor-specific files"
+echo "════════════════════════════════════════════════"
+echo ""
+
+# Remove camera provider service reference from vendor.mk
+vendor_mk_file="vendor/nothing/Spacewar/Spacewar-vendor.mk"
+if [ -f "$vendor_mk_file" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Would remove camera provider service reference from $vendor_mk_file"
+  else
+    if sed -i '/android\.hardware\.camera\.provider@2\.4-service_64\.rc/d' "$vendor_mk_file"; then
+      log_success "Removed camera provider service reference from Spacewar-vendor.mk"
+    else
+      log_error "Failed to modify $vendor_mk_file"
+    fi
+  fi
+else
+  log_warning "$vendor_mk_file not found, skipping camera provider fix"
+fi
+
+# Fix radio file SHA1 checks in Android.mk
+vendor_android_mk="vendor/nothing/Spacewar/Android.mk"
+if [ -f "$vendor_android_mk" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Would fix radio file SHA1 checks in $vendor_android_mk"
+  else
+    if sed -i 's/add-radio-file-sha1-checked,\(radio\/[^,]*\),[^)>]*/add-radio-file,\1/g' "$vendor_android_mk"; then
+      log_success "Fixed radio file SHA1 checks in Android.mk"
+    else
+      log_error "Failed to modify $vendor_android_mk"
+    fi
+  fi
+else
+  log_warning "$vendor_android_mk not found, skipping radio file fix"
+fi
+
+# ==============================================================
 # 4️⃣ KERNELSU SETUP
 # ==============================================================
 
