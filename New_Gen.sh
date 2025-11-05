@@ -26,6 +26,7 @@ clones=(
   "git clone -b bka https://github.com/Evolution-X-Devices/kernel_nothing_sm7325.git kernel/nothing/sm7325"
   "git clone -b bka https://github.com/nyxalune/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
   "git clone -b bka https://github.com/Evolution-X-Devices/hardware_nothing.git hardware/nothing"
+  "git clone -b derp16 https://github.com/DaViDev985/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
 )
 
 for cmd in "${clones[@]}"; do
@@ -129,6 +130,7 @@ cherry_pick_commit() {
 # Perform cherry-picks BEFORE renaming
 cherry_pick_commit "vendor/nothing/Spacewar" "muppets" "https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar.git" "b69b9f09c77bb53f43666e6cadde57ab601c15a4"
 cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/LineageOS/android_device_nothing_Spacewar.git" "aae038e48a7cfe60805d37663555258c50e38f55"
+cherry_pick_commit "vendor/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/vendor_nothing_Spacewar.git" "af074591e9a880b9869b9aba49d2af658cb2dcf8"
 
 # ==============================================================
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
@@ -203,6 +205,30 @@ for folder in "${directories[@]}"; do
     done
   fi
 done
+
+# ============================================================================
+# Fix Vendor Files
+# ============================================================================
+echo ""
+echo "════════════════════════════════════════════════"
+echo "🔧 Fixing vendor-specific files"
+echo "════════════════════════════════════════════════"
+echo ""
+
+vendor_android_mk="vendor/nothing/Spacewar/Android.mk"
+if [ -f "$vendor_android_mk" ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "Would fix radio file SHA1 checks in $vendor_android_mk"
+    else
+        if sed -i 's/add-radio-file-sha1-checked,\(radio\/[^,]*\),[^)>]*/add-radio-file,\1/g' "$vendor_android_mk"; then
+            log_success "Fixed radio file SHA1 checks in Android.mk"
+        else
+            log_error "Failed to modify $vendor_android_mk"
+        fi
+    fi
+else
+    log_warning "$vendor_android_mk not found, skipping radio file fix"
+fi
 
 # ==============================================================
 # 4️⃣ KERNELSU SETUP
