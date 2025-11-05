@@ -221,9 +221,9 @@ if [ -f "$vendor_android_mk" ]; then
         echo "Would fix radio file SHA1 checks in $vendor_android_mk"
     else
         if sed -i 's/add-radio-file-sha1-checked,\(radio\/[^,]*\),[^)>]*/add-radio-file,\1/g' "$vendor_android_mk"; then
-            log_success "Fixed radio file SHA1 checks in Android.mk"
+            echo "Fixed radio file SHA1 checks in Android.mk"
         else
-            log_error "Failed to modify $vendor_android_mk"
+            echo "Failed to modify $vendor_android_mk"
         fi
     fi
 else
