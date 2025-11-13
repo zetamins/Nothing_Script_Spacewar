@@ -22,11 +22,10 @@ echo ""
 # ==============================================================
 
 clones=(
-  "git clone -b bka https://github.com/Evolution-X-Devices/device_nothing_Spacewar.git device/nothing/Spacewar"
-  "git clone -b bka https://github.com/Evolution-X-Devices/kernel_nothing_sm7325.git kernel/nothing/sm7325"
+  "git clone -b bka https://github.com/zetamins/device_nothing_Spacewar.git device/nothing/Spacewar"
+  "git clone -b bka https://github.com/zetamins/kernel_nothing_sm7325.git kernel/nothing/sm7325"
   "git clone -b bka https://github.com/nyxalune/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
-  "git clone -b bka https://github.com/Evolution-X-Devices/hardware_nothing.git hardware/nothing"
-  "git clone -b derp16 https://github.com/DaViDev985/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
+  "git clone -b bka https://github.com/zetamins/android_hardware_nothing.git hardware/nothing"
 )
 
 for cmd in "${clones[@]}"; do
@@ -56,83 +55,6 @@ for cmd in "${clones[@]}"; do
     echo "Cloned $folder successfully."
   fi
 done
-
-# ==============================================================
-# 2️⃣ CHERRY-PICK COMMITS (Moved before renaming)
-# ==============================================================
-
-echo ""
-echo "════════════════════════════════════════════════"
-echo "🍒 Cherry-picking upstream commits"
-echo "════════════════════════════════════════════════"
-echo ""
-
-cherry_pick_commit() {
-  local LOCAL_DIR=$1
-  local REMOTE_NAME=$2
-  local REMOTE_REPO=$3
-  local COMMIT_SHA=$4
-
-  echo "──────────────────────────────────────────────"
-  echo "Cherry-picking in $LOCAL_DIR"
-  echo "──────────────────────────────────────────────"
-
-  if [ ! -d "$LOCAL_DIR" ]; then
-    echo "⚠️  Directory $LOCAL_DIR not found, skipping cherry-pick"
-    return
-  fi
-
-  cd "$LOCAL_DIR" || { echo "Failed to enter $LOCAL_DIR"; return; }
-
-  # Set git to use true (no-op) as editor to avoid opening nano/vim
-  export GIT_EDITOR=true
-
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Would add remote $REMOTE_NAME: $REMOTE_REPO"
-    echo "Would fetch from $REMOTE_NAME"
-    echo "Would cherry-pick commit $COMMIT_SHA"
-  else
-    if ! git remote | grep -q "^${REMOTE_NAME}$"; then
-      echo "Adding remote $REMOTE_NAME..."
-      git remote add "$REMOTE_NAME" "$REMOTE_REPO"
-    else
-      echo "Remote $REMOTE_NAME already exists"
-    fi
-
-    echo "Fetching from $REMOTE_NAME..."
-    git fetch "$REMOTE_NAME" || { echo "Failed to fetch from $REMOTE_NAME"; cd - >/dev/null; return; }
-
-    echo "Cherry-picking commit $COMMIT_SHA..."
-    if git cherry-pick --allow-empty "$COMMIT_SHA"; then
-      echo "✅ Cherry-pick successful"
-    else
-      CONFLICT_FILES=$(git diff --name-only --diff-filter=U)
-      if [ -n "$CONFLICT_FILES" ]; then
-        echo "⚠️  Found conflicts, resolving automatically..."
-        for file in $CONFLICT_FILES; do
-          awk '/^<<<<<<< HEAD$/{skip=1; next} /^=======$/{skip=0; next} /^>>>>>>>/{next} !skip{print}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
-          git add "$file"
-        done
-        if git cherry-pick --continue --allow-empty; then
-          echo "✅ Cherry-pick completed after conflict resolution"
-        else
-          echo "❌ Cherry-pick failed, aborting..."
-          git cherry-pick --abort
-        fi
-      else
-        echo "❌ Cherry-pick failed"
-      fi
-    fi
-  fi
-  cd - >/dev/null
-}
-
-# Perform cherry-picks BEFORE renaming
-cherry_pick_commit "vendor/nothing/Spacewar" "muppets" "https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar.git" "b69b9f09c77bb53f43666e6cadde57ab601c15a4"
-cherry_pick_commit "device/nothing/Spacewar" "lineage" "https://github.com/LineageOS/android_device_nothing_Spacewar.git" "aae038e48a7cfe60805d37663555258c50e38f55"
-cherry_pick_commit "vendor/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/vendor_nothing_Spacewar.git" "e2f2a100ed0536b6f62190ac12026477758c2d5e"
-cherry_pick_commit "vendor/nothing/Spacewar" "davidev" "https://github.com/DaViDev985/vendor_nothing_Spacewar.git" "af074591e9a880b9869b9aba49d2af658cb2dcf8"
-
 # ==============================================================
 # 3️⃣ RENAME FILES AND REPLACE STRINGS
 # ==============================================================
