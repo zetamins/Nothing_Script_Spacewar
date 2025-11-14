@@ -72,13 +72,17 @@ radio_source_url="https://github.com/TheMuppets/proprietary_vendor_nothing_Space
 radio_dest="vendor/nothing/Spacewar/radio"
 
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "Would clone $radio_source_url to temp location"
+  echo "Would clone $radio_source_url to temp location (skipping LFS)"
   echo "Would remove $radio_dest if it exists"
   echo "Would copy radio folder to $radio_dest"
 else
-  echo "Cloning TheMuppets repo to temporary location..."
-  if git clone --depth 1 "$radio_source_url" "$temp_clone"; then
-    echo "✅ Clone successful"
+  echo "Cloning TheMuppets repo to temporary location (skipping LFS files)..."
+  
+  # Clone without LFS files to avoid 404 errors
+  GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 "$radio_source_url" "$temp_clone" 2>&1 | grep -v "Smudge error" || true
+  
+  if [ -d "$temp_clone" ]; then
+    echo "✅ Clone completed (LFS files skipped)"
     
     # Remove existing radio folder
     if [ -d "$radio_dest" ]; then
@@ -87,12 +91,12 @@ else
       echo "✅ Removed old radio folder"
     fi
     
-    # Copy radio folder
+    # Copy radio folder if it exists
     if [ -d "$temp_clone/radio" ]; then
       echo "Copying radio folder..."
       mkdir -p "$(dirname "$radio_dest")"
       cp -r "$temp_clone/radio" "$radio_dest"
-      echo "✅ Radio folder copied successfully"
+      echo "✅ Radio folder copied successfully (note: large LFS files were skipped)"
     else
       echo "⚠️  Radio folder not found in TheMuppets repo"
     fi
@@ -102,7 +106,7 @@ else
     rm -rf "$temp_clone"
     echo "✅ Cleanup complete"
   else
-    echo "❌ Failed to clone TheMuppets repo"
+    echo "⚠️  Clone failed or temp directory not created, skipping radio folder copy"
   fi
 fi
 
