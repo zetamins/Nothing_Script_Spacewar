@@ -24,7 +24,7 @@ echo ""
 clones=(
   "git clone -b derp16 https://github.com/DaViDev985/device_nothing_Spacewar device/nothing/Spacewar"
   "git clone -b derp16 https://github.com/DaViDev985/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-  "git clone -b derp16 https://github.com/DaViDev985/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
+  "git clone -b derp16 https://github.com/zetamins/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
   "git clone -b derp16 https://github.com/DaViDev985/android_hardware_nothing.git hardware/nothing"
   "git clone -b derp16 https://github.com/DaViDev985/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
 )
@@ -79,7 +79,7 @@ else
   echo "Cloning TheMuppets repo to temporary location (skipping LFS files)..."
   
   # Clone without LFS files to avoid 404 errors
-  GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 "$radio_source_url" "$temp_clone" 2>&1 | grep -v "Smudge error" || true
+  git clone "$radio_source_url" "$temp_clone" 2>&1 | grep -v "Smudge error" || true
   
   if [ -d "$temp_clone" ]; then
     echo "✅ Clone completed (LFS files skipped)"
@@ -95,6 +95,7 @@ else
     if [ -d "$temp_clone/radio" ]; then
       echo "Copying radio folder..."
       mkdir -p "$(dirname "$radio_dest")"
+      wget -O "$radio_dest/dsp.img" "https://raw.githubusercontent.com/DaViDev985/vendor_nothing_Spacewar/derp16/radio/dsp.img"
       cp -r "$temp_clone/radio" "$radio_dest"
       echo "✅ Radio folder copied successfully (note: large LFS files were skipped)"
     else
