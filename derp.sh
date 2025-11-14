@@ -58,7 +58,56 @@ for cmd in "${clones[@]}"; do
 done
 
 # ==============================================================
-# 2️⃣ CHERRY-PICK COMMITS
+# 2️⃣ COPY RADIO FOLDER FROM THEMUPPETS
+# ==============================================================
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "📻 Copying radio folder from TheMuppets"
+echo "════════════════════════════════════════════════"
+echo ""
+
+temp_clone="/tmp/themuppets_spacewar_$"
+radio_source_url="https://github.com/TheMuppets/proprietary_vendor_nothing_Spacewar.git"
+radio_dest="vendor/nothing/Spacewar/radio"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "Would clone $radio_source_url to temp location"
+  echo "Would remove $radio_dest if it exists"
+  echo "Would copy radio folder to $radio_dest"
+else
+  echo "Cloning TheMuppets repo to temporary location..."
+  if git clone --depth 1 "$radio_source_url" "$temp_clone"; then
+    echo "✅ Clone successful"
+    
+    # Remove existing radio folder
+    if [ -d "$radio_dest" ]; then
+      echo "Removing existing radio folder..."
+      rm -rf "$radio_dest"
+      echo "✅ Removed old radio folder"
+    fi
+    
+    # Copy radio folder
+    if [ -d "$temp_clone/radio" ]; then
+      echo "Copying radio folder..."
+      mkdir -p "$(dirname "$radio_dest")"
+      cp -r "$temp_clone/radio" "$radio_dest"
+      echo "✅ Radio folder copied successfully"
+    else
+      echo "⚠️  Radio folder not found in TheMuppets repo"
+    fi
+    
+    # Cleanup temp folder
+    echo "Cleaning up temporary files..."
+    rm -rf "$temp_clone"
+    echo "✅ Cleanup complete"
+  else
+    echo "❌ Failed to clone TheMuppets repo"
+  fi
+fi
+
+# ==============================================================
+# 3️⃣ CHERRY-PICK COMMITS
 # ==============================================================
 
 echo ""
@@ -91,18 +140,30 @@ for pick in "${cherry_picks[@]}"; do
     echo "Would cherry-pick $commit in $folder"
   else
     cd "$folder" || exit
-    if git cherry-pick --allow-empty -X theirs "$commit"; then
+    
+    # Clean any uncommitted changes first
+    git reset --hard HEAD 2>/dev/null
+    git clean -fd 2>/dev/null
+    
+    if git cherry-pick --allow-empty -X theirs "$commit" 2>/dev/null; then
       echo "✅ Successfully cherry-picked $commit"
     else
       echo "⚠️  Cherry-pick had conflicts, resolving with 'theirs' strategy..."
-      # Accept theirs for all conflicts
-      git checkout --theirs .
-      git add .
-      if git cherry-pick --continue --allow-empty; then
-        echo "✅ Cherry-pick completed with conflicts resolved"
+      
+      # Check if cherry-pick is in progress
+      if [ -d ".git/sequencer" ] || git status | grep -q "cherry-pick"; then
+        # Accept theirs for all conflicts
+        git diff --name-only --diff-filter=U | xargs -r git checkout --theirs
+        git add -A
+        
+        if git cherry-pick --continue --allow-empty --no-edit 2>/dev/null; then
+          echo "✅ Cherry-pick completed with conflicts resolved"
+        else
+          echo "❌ Cherry-pick failed, aborting..."
+          git cherry-pick --abort 2>/dev/null
+        fi
       else
-        echo "❌ Cherry-pick failed, aborting..."
-        git cherry-pick --abort 2>/dev/null
+        echo "ℹ️  No cherry-pick in progress, likely already applied or empty"
       fi
     fi
     cd - >/dev/null
@@ -110,7 +171,7 @@ for pick in "${cherry_picks[@]}"; do
 done
 
 # ==============================================================
-# 3️⃣ RENAME FILES AND REPLACE STRINGS
+# 4️⃣ RENAME FILES AND REPLACE STRINGS
 # ==============================================================
 
 echo ""
@@ -208,7 +269,7 @@ else
 fi
 
 # ==============================================================
-# 4️⃣ KERNELSU SETUP
+# 5️⃣ KERNELSU SETUP
 # ==============================================================
 
 echo ""
@@ -233,7 +294,7 @@ else
 fi
 
 # ==============================================================
-# 5️⃣ FIX PACKAGE ALLOWED LIST
+# 6️⃣ FIX PACKAGE ALLOWED LIST
 # ==============================================================
 
 echo ""
@@ -254,7 +315,7 @@ else
 fi
 
 # ==============================================================
-# 6️⃣ FIX ANDROID.BP REFERENCES
+# 7️⃣ FIX ANDROID.BP REFERENCES
 # ==============================================================
 
 echo ""
@@ -280,7 +341,7 @@ else
 fi
 
 # ==============================================================
-# 7️⃣ UPDATE DEVICE FRAMEWORK MATRIX
+# 8️⃣ UPDATE DEVICE FRAMEWORK MATRIX
 # ==============================================================
 
 echo ""
