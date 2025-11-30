@@ -22,10 +22,10 @@ echo ""
 # ==============================================================
 
 clones=(
-  "git clone -b bka https://github.com/zetamins/device_nothing_Spacewar.git device/nothing/Spacewar"
-  "git clone -b bka https://github.com/zetamins/kernel_nothing_sm7325.git kernel/nothing/sm7325"
+  "git clone -b bka https://github.com/Evolution-X-Devices/device_nothing_Spacewar.git device/nothing/Spacewar"
+  "git clone -b bka https://github.com/Evolution-X-Devices/kernel_nothing_sm7325.git kernel/nothing/sm7325"
   "git clone -b bka https://github.com/nyxalune/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
-  "git clone -b bka https://github.com/zetamins/android_hardware_nothing.git hardware/nothing"
+  "git clone -b bka https://github.com/Evolution-X-Devices/hardware_nothing.git hardware/nothing"
 )
 
 for cmd in "${clones[@]}"; do
