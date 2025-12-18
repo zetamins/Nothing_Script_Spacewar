@@ -24,7 +24,7 @@ echo ""
 clones=(
   "git clone -b bka https://github.com/zetamins/device_nothing_Spacewar.git device/nothing/Spacewar"
   "git clone -b bka https://github.com/zetamins/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-  "git clone -b bka https://github.com/zetamins/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
+  "git clone -b bka https://github.com/zetamins/vendor_nothing_Spacewar_2.0.git vendor/nothing/Spacewar"
   "git clone -b bka https://github.com/zetamins/hardware_nothing.git hardware/nothing"
   "git clone -b derp16 https://github.com/zetamins/proprietary_vendor_nothing_camera.git vendor/nothing/camera"
 )
