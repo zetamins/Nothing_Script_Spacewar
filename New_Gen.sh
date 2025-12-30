@@ -22,10 +22,10 @@ echo ""
 # ==============================================================
 
 clones=(
-  "git clone -b axion https://github.com/smrth097/android_device_nothing_Spacewar.git device/nothing/Spacewar"
-  "git clone -b lineage-23.0 https://github.com/smrth097/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-  "git clone -b bka https://github.com/smrth097/proprietary_vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
-  "git clone -b bka https://github.com/smrth097/android_hardware_nothing.git hardware/nothing"
+  "git clone -b bka https://github.com/zetamins/device_nothing_Spacewar.git device/nothing/Spacewar"
+  "git clone -b bka https://github.com/zetamins/kernel_nothing_sm7325.git kernel/nothing/sm7325"
+  "git clone -b bka https://github.com/zetamins/proprietary_vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
+  "git clone -b bka https://github.com/zetamins/android_hardware_nothing.git hardware/nothing"
 )
 
 for cmd in "${clones[@]}"; do
@@ -90,6 +90,7 @@ for folder in "${directories[@]}"; do
     grep -rl "lineage_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/lineage_Spacewar/${ROM_NAME}_Spacewar/g"
     grep -rl "aosp_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/aosp_Spacewar/${ROM_NAME}_Spacewar/g"
     grep -rl "mica_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/mica_Spacewar/${ROM_NAME}_Spacewar/g"
+    grep -rl "statix_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/statix_Spacewar/${ROM_NAME}_Spacewar/g"
     grep -rl "clover_Spacewar" "$folder" 2>/dev/null | xargs -r sed -i "s/clover_Spacewar/${ROM_NAME}_Spacewar/g"
     echo "✅ Replaced ROM prefixes with '${ROM_NAME}_Spacewar' in files."
   fi
@@ -98,7 +99,7 @@ for folder in "${directories[@]}"; do
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Would rename files/folders containing ROM prefixes in $folder"
   else
-    for prefix in lineage aosp mica clover; do
+    for prefix in lineage aosp mica statix clover; do
       find "$folder" -depth -name "*${prefix}_Spacewar*" 2>/dev/null -exec bash -c '
         f="{}"
         rom_name="'"$ROM_NAME"'"
@@ -122,6 +123,7 @@ for folder in "${directories[@]}"; do
         sed -i -e "s/\blineage\b/$ROM_NAME/g" \
                -e "s/\baosp\b/$ROM_NAME/g" \
                -e "s/\bmica\b/$ROM_NAME/g" \
+               -e "s/\bstatix\b/$ROM_NAME/g" \
                -e "s/\bclover\b/$ROM_NAME/g" "$mk"
         echo "✅ Updated $(basename $mk)"
       fi
