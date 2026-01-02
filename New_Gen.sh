@@ -24,8 +24,8 @@ echo ""
 clones=(
   "git clone -b bka https://github.com/zetamins/device_nothing_Spacewar.git device/nothing/Spacewar"
   "git clone -b bka https://github.com/zetamins/kernel_nothing_sm7325.git kernel/nothing/sm7325"
-  "git clone -b bka https://github.com/zetamins/proprietary_vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
-  "git clone -b bka https://github.com/zetamins/android_hardware_nothing.git hardware/nothing"
+  "git clone -b bka https://github.com/zetamins/vendor_nothing_Spacewar.git vendor/nothing/Spacewar"
+  "git clone -b bka https://github.com/zetamins/hardware_nothing.git hardware/nothing"
 )
 
 for cmd in "${clones[@]}"; do
